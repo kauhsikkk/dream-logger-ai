@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dream Logger AI - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%);
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+        }
+        .glow {
+            text-shadow: 0 0 10px #00ff41, 0 0 20px #00ff41, 0 0 30px #00ff41;
+        }
+        .terminal-border {
+            border: 2px solid #00ff41;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+        }
+        .dream-card {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #00ff41;
+            transition: all 0.3s ease;
+        }
+        .dream-card:hover {
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+        }
+        .tab-button {
+            background: transparent;
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            transition: all 0.3s ease;
+        }
+        .tab-button.active {
+            background: #00ff41;
+            color: black;
+        }
+        .tab-button:hover {
+            background: rgba(0, 255, 65, 0.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4">
+    <div class="container mx-auto max-w-6xl">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-4xl font-bold glow">◉ DREAM LOGGER AI ◉</h1>
+                <p class="text-green-400 opacity-80">Welcome back, {{ username }}!</p>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-green-400 opacity-60">Username: {{ username }}</p>
+                <p class="text-sm mb-2">🌙 Dreams Analyzed: <span id="totalDreams">0</span></p>
+                <a href="/logout" class="bg-red-600 hover:bg-red-700 text-white text-sm px-4 py-2 rounded transition-all duration-300">
+                    ◉ LOGOUT
+                </a>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex space-x-4 mb-8">
+            <button class="tab-button active px-6 py-2 rounded" onclick="showTab('analyze')">
+                ▶ NEW DREAM
+            </button>
+            <button class="tab-button px-6 py-2 rounded" onclick="showTab('history')">
+                📚 DREAM ARCHIVE
+            </button>
+        </div>
+
+        <!-- Analyze Dream Tab -->
+        <div id="analyzeTab" class="tab-content">
+            <div class="terminal-border rounded-lg p-6 mb-6">
+                <div class="mb-6">
+                    <label for="dreamInput" class="block text-sm font-bold mb-2">
+                        &gt; DESCRIBE YOUR DREAM:
+                    </label>
+                    <textarea 
+                        id="dreamInput" 
+                        rows="6" 
+                        class="w-full bg-black text-green-400 border border-green-500 rounded px-4 py-2 focus:outline-none focus:border-green-300 resize-none"
+                        placeholder="I was floating through a neon city where the buildings were made of crystallized music..."
+                    ></textarea>
+                </div>
+                
+                <div class="text-center mb-8">
+                    <button 
+                        id="analyzeBtn" 
+                        class="bg-green-600 hover:bg-green-700 text-black font-bold py-3 px-8 rounded-full transition-all duration-300"
+                        onclick="analyzeDream()"
+                    >
+                        ▶ ANALYZE DREAM
+                    </button>
+                </div>
+                
+                <!-- Response Area -->
+                <div id="responseArea" class="hidden">
+                    <div class="terminal-border rounded-lg p-4 mb-4">
+                        <h3 class="text-xl font-bold mb-2">MOOD ANALYSIS:</h3>
+                        <div id="moodAnalysis" class="text-green-300"></div>
+                    </div>
+                    
+                    <div class="terminal-border rounded-lg p-4 mb-4">
+                        <h3 class="text-xl font-bold mb-2">DREAM INTERPRETATION:</h3>
+                        <div id="dreamAnalysis" class="text-green-300"></div>
+                    </div>
+                    
+                    <div class="terminal-border rounded-lg p-4 mb-4">
+                        <h3 class="text-xl font-bold mb-2">DREAM VISUALIZATION:</h3>
+                        <div id="imageContainer" class="text-green-300"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dreams History Tab -->
+        <div id="historyTab" class="tab-content hidden">
+            <div class="terminal-border rounded-lg p-6">
+                <h3 class="text-xl font-bold mb-4">📚 YOUR DREAM ARCHIVE</h3>
+                <div id="dreamsHistory" class="space-y-4">
+                    <div class="text-center text-green-400 opacity-60">
+                        Loading your dreams...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'analyze';
+
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + 'Tab').classList.remove('hidden');
+            event.target.classList.add('active');
+            
+            currentTab = tabName;
+            
+            // Load dreams history if switching to history tab
+            if (tabName === 'history') {
+                loadDreamsHistory();
+            }
+        }
+
+        async function analyzeDream() {
+            const dreamText = document.getElementById('dreamInput').value.trim();
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const responseArea = document.getElementById('responseArea');
+            
+            if (!dreamText) {
+                alert('Please describe your dream');
+                return;
+            }
+            
+            // Show loading state
+            analyzeBtn.disabled = true;
+            analyzeBtn.textContent = '◉ ANALYZING...';
+            responseArea.classList.remove('hidden');
+            
+            document.getElementById('moodAnalysis').innerHTML = '<span class="animate-pulse">Analyzing emotional resonance...</span>';
+            document.getElementById('dreamAnalysis').innerHTML = '<span class="animate-pulse">Decoding subconscious patterns...</span>';
+            document.getElementById('imageContainer').innerHTML = '<span class="animate-pulse">Generating dream imagery...</span>';
+            
+            try {
+                const response = await fetch("/analyze", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ dream: dreamText })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Update UI with results
+                document.getElementById('moodAnalysis').innerHTML = `Your dream carries <strong>${data.mood.toLowerCase()}</strong> energy, indicating deep emotional processing.`;
+                document.getElementById('dreamAnalysis').innerHTML = data.interpretation;
+                document.getElementById('imageContainer').innerHTML = `<img src="${data.image}" alt="Dream Visualization" class="max-w-full rounded border border-green-500">`;
+                
+                // Clear input and update counter
+                document.getElementById('dreamInput').value = '';
+                updateDreamCounter();
+                
+            } catch (error) {
+                console.error('Analysis error:', error);
+                document.getElementById('moodAnalysis').innerHTML = '<span class="text-red-400">◉ Analysis temporarily unavailable</span>';
+                document.getElementById('dreamAnalysis').innerHTML = '<span class="text-red-400">◉ Backend connection failed</span>';
+                document.getElementById('imageContainer').innerHTML = '<span class="text-red-400">◉ Image generation unavailable</span>';
+            } finally {
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = '▶ ANALYZE DREAM';
+            }
+        }
+
+        async function loadDreamsHistory() {
+            const historyDiv = document.getElementById('dreamsHistory');
+            historyDiv.innerHTML = '<div class="text-center text-green-400 opacity-60">Loading your dreams...</div>';
+            
+            try {
+                const response = await fetch('/dreams');
+                if (!response.ok) {
+                    throw new Error('Failed to load dreams');
+                }
+                
+                const dreams = await response.json();
+                
+                if (dreams.length === 0) {
+                    historyDiv.innerHTML = '<div class="text-center text-green-400 opacity-60">No dreams recorded yet. Start by analyzing your first dream!</div>';
+                    return;
+                }
+                
+                const dreamsHTML = dreams.map(dream => `
+                    <div class="dream-card rounded-lg p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="text-sm text-green-400 opacity-60">
+                                ${new Date(dream.created_at).toLocaleDateString()} - ${new Date(dream.created_at).toLocaleTimeString()}
+                            </div>
+                            <div class="text-sm font-bold text-${getMoodColor(dream.mood)}-400">
+                                ${dream.mood}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Dream:</strong> ${dream.dream_text.substring(0, 150)}${dream.dream_text.length > 150 ? '...' : ''}
+                        </div>
+                        <div class="mb-3 text-sm text-green-300">
+                            <strong>Interpretation:</strong> ${dream.interpretation.substring(0, 200)}${dream.interpretation.length > 200 ? '...' : ''}
+                        </div>
+                        ${dream.image_url ? `<img src="${dream.image_url}" alt="Dream Image" class="max-w-32 rounded border border-green-500">` : ''}
+                    </div>
+                `).join('');
+                
+                historyDiv.innerHTML = dreamsHTML;
+                
+            } catch (error) {
+                console.error('Error loading dreams:', error);
+                historyDiv.innerHTML = '<div class="text-center text-red-400">Failed to load dreams. Please try again.</div>';
+            }
+        }
+
+        function getMoodColor(mood) {
+            const colors = {
+                'Excited': 'yellow',
+                'Anxious': 'red',
+                'Calm': 'blue',
+                'Mysterious': 'purple'
+            };
+            return colors[mood] || 'green';
+        }
+
+        async function updateDreamCounter() {
+            try {
+                const response = await fetch('/dreams');
+                if (response.ok) {
+                    const dreams = await response.json();
+                    document.getElementById('totalDreams').textContent = dreams.length;
+                }
+            } catch (error) {
+                console.error('Error updating counter:', error);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDreamCounter();
+        });
+
+        // Enter key support
+        document.getElementById('dreamInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                analyzeDream();
+            }
+        });
+    </script>
+</body>
+</html>
