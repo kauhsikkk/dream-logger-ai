@@ -461,6 +461,9 @@ def generate_image(prompt):
     models = [
         "stabilityai/stable-diffusion-xl-base-1.0",
         "Lykon/dreamshaper-8"
+        "runwayml/stable-diffusion-v1-5",
+        "CompVis/stable-diffusion-v1-4",
+        "prompthero/openjourney-v4"
     ]
     formatted_prompt = f"surreal dream, {prompt[:100]}, ethereal, mystical, fantasy, vivid colors"
     for model in models:
